@@ -1,0 +1,10 @@
+[x] Clone de repositório vazio
+[ ] Clone de repositório com conteúdo
+[ ] Fetch
+[ ] Push
+[ ] Múltiplos repositórios
+[ ] Repositórios por usuário
+[ ] Repositórios por grupo
+[ ] Autenticação básica
+[ ] Autenticação Bare
+[ ] Permissões por path
