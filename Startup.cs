@@ -70,9 +70,10 @@ namespace app
                 // header
                 //var pack = "#service=git-upload-pack\n";
                 //var pack = " service=git-upload-pack\n";
-                var pack = " service=git-upload-pack\n";
-                var prefix = (pack.Length + 4).ToString("x4");
-                var header = $"{prefix}{pack}0000\n";
+                var pack = "# service=git-upload-pack\n";
+                //var prefix = (pack.Length + 4).ToString("x4");
+                //var header = $"{prefix}{pack}0000\n";
+                var header = $"{pack}0000";
                 var headerBytes = Encoding.UTF8.GetBytes(header);
 
                 responseHeaders["Expires"] = new string[] { "Fri, 01 Jan 1980 00:00:00 GMT" };
