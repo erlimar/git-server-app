@@ -1,0 +1,13 @@
+{
+	"name": ".NET Core Container",
+	"dockerFile": "Dockerfile",
+	"appPort": [
+		9000,
+		5000,
+		5001
+	],
+	"extensions": [
+		"ms-vscode.csharp",
+		"ms-azuretools.vscode-docker"
+	]
+}
