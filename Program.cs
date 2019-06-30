@@ -19,6 +19,7 @@ namespace app
 
         public static IWebHostBuilder CreateWebHostBuilder(string[] args) =>
             WebHost.CreateDefaultBuilder(args)
+                .UseUrls("http://localhost:5000") // Only HTTP
                 .UseStartup<Startup>();
     }
 }

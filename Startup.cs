@@ -14,6 +14,25 @@ namespace app
 {
     public class Startup
     {
+        private readonly string _gitExecutablePath;
+        private readonly string _gitRepositoryPath;
+
+        public Startup()
+        {
+            _gitExecutablePath = Environment.GetEnvironmentVariable("GIT_SERVER_EXEC_PATH");
+            _gitRepositoryPath = Environment.GetEnvironmentVariable("GIT_SERVER_REPO_PATH");
+
+            if (string.IsNullOrWhiteSpace(_gitExecutablePath))
+            {
+                throw new Exception("Set a GIT_SERVER_EXEC_PATH variable value.");
+            }
+
+            if (string.IsNullOrWhiteSpace(_gitRepositoryPath))
+            {
+                throw new Exception("Set a GIT_SERVER_REPO_PATH variable value.");
+            }
+        }
+
         // This method gets called by the runtime. Use this method to add services to the container.
         // For more information on how to configure your application, visit https://go.microsoft.com/fwlink/?LinkID=398940
         public void ConfigureServices(IServiceCollection services)
@@ -47,11 +66,11 @@ namespace app
             {
                 string processOutput = null;
 
-                // git receive-pack --stateless-rpc --advertise-refs {repo-dir}
+                // git upload-pack --stateless-rpc --advertise-refs {repo-dir}
                 using (var process = new Process())
                 {
-                    process.StartInfo.FileName = @"C:\Program Files\Git\cmd\git.exe";
-                    process.StartInfo.Arguments = string.Format("receive-pack --stateless-rpc --advertise-refs \"{0}\"", @"C:\Users\Erlimar\source\git-server-tests\server\repository");
+                    process.StartInfo.FileName = _gitExecutablePath;
+                    process.StartInfo.Arguments = string.Format("upload-pack --stateless-rpc --advertise-refs \"{0}\"", _gitRepositoryPath);
                     process.StartInfo.UseShellExecute = false;
                     process.StartInfo.RedirectStandardOutput = true;
 
@@ -68,19 +87,16 @@ namespace app
                 byte[] output = Encoding.UTF8.GetBytes(processOutput);
 
                 // header
-                //var pack = "#service=git-upload-pack\n";
-                //var pack = " service=git-upload-pack\n";
                 var pack = "# service=git-upload-pack\n";
-                //var prefix = (pack.Length + 4).ToString("x4");
-                //var header = $"{prefix}{pack}0000\n";
-                var header = $"{pack}0000";
+                var prefix = (pack.Length + 4).ToString("x4");
+                var header = $"{prefix}{pack}0000";
                 var headerBytes = Encoding.UTF8.GetBytes(header);
 
                 responseHeaders["Expires"] = new string[] { "Fri, 01 Jan 1980 00:00:00 GMT" };
                 responseHeaders["Pragma"] = new string[] { "no-cache" };
                 responseHeaders["Cache-Control"] = new string[] { "no-cache, max-age=0, must-revalidate" };
                 responseHeaders["Content-Length"] = new string[] { (output.Length + header.Length).ToString() };
-                responseHeaders["Content-Type"] = new string[] { "application/x-git-receive-pack-advertisement" };
+                responseHeaders["Content-Type"] = new string[] { "application/x-git-upload-pack-advertisement" };
 
                 environment["owin.ResponseStatusCode"] = 200;
                 environment["owin.ResponseReasonPhrase"] = "OK";
