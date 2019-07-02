@@ -106,6 +106,54 @@ namespace app
                 return responseBody.WriteAsync(output, 0, output.Length);
             }
 
+            // git clone
+            // > POST /repository.git/git-upload-pack HTTP/1.1
+            if (requestMethod == "POST" &&
+                requestPath.EndsWith("/git-upload-pack") &&
+                requestQueryString == string.Empty)
+            {
+                string processOutput = null;
+
+                // git upload-pack --stateless-rpc {repo-dir}
+                using (var process = new Process())
+                {
+                    process.StartInfo.FileName = _gitExecutablePath;
+                    process.StartInfo.Arguments = string.Format("upload-pack --stateless-rpc \"{0}\"", _gitRepositoryPath);
+                    process.StartInfo.UseShellExecute = false;
+                    process.StartInfo.RedirectStandardOutput = true;
+                    process.StartInfo.RedirectStandardInput = true;
+
+                    process.Start();
+
+                    // TODO: Encoding fail
+                    using (StreamReader reader = new StreamReader(requestBody))
+                    {
+                        process.StandardInput.Write(reader.ReadToEnd());
+                    }
+
+                    // TODO: Encoding fail
+                    processOutput = process.StandardOutput.ReadToEnd();
+
+                    process.WaitForExit();
+                }
+
+                if (string.IsNullOrEmpty(processOutput))
+                    return responseBody.FlushAsync();
+
+                byte[] output = Encoding.UTF8.GetBytes(processOutput);
+
+                responseHeaders["Expires"] = new string[] { "Fri, 01 Jan 1980 00:00:00 GMT" };
+                responseHeaders["Pragma"] = new string[] { "no-cache" };
+                responseHeaders["Cache-Control"] = new string[] { "no-cache, max-age=0, must-revalidate" };
+                responseHeaders["Content-Length"] = new string[] { (output.Length).ToString() };
+                responseHeaders["Content-Type"] = new string[] { "application/x-git-upload-pack-result" };
+
+                environment["owin.ResponseStatusCode"] = 200;
+                environment["owin.ResponseReasonPhrase"] = "OK";
+
+                return responseBody.WriteAsync(output, 0, output.Length);
+            }
+
             // > GET /repository.git/HEAD HTTP/1.1
             if (requestMethod == "GET" &&
                 requestPath.EndsWith("/HEAD") &&
@@ -117,16 +165,7 @@ namespace app
                 return responseBody.FlushAsync();
             }
 
-            throw new UnauthorizedAccessException();
-
-
-            // var responseStream = (Stream)environment["owin.ResponseBody"];
-            // var responseHeaders = (IDictionary<string, string[]>)environment["owin.ResponseHeaders"];
-
-            // responseHeaders["Content-Length"] = new string[] { responseBytes.Length.ToString(CultureInfo.InvariantCulture) };
-            // responseHeaders["Content-Type"] = new string[] { "text/plain" };
-
-            // return responseStream.WriteAsync(responseBytes, 0, responseBytes.Length);
+            throw new NotImplementedException();
         }
     }
 }
