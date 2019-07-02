@@ -112,7 +112,10 @@ namespace app
                 requestPath.EndsWith("/git-upload-pack") &&
                 requestQueryString == string.Empty)
             {
-                string processOutput = null;
+                //string processOutput = null;
+                var outputStream = new MemoryStream();
+                //var outputWriter = new StreamWriter(outputStream);
+                var outputSize = (long)0;
 
                 // git upload-pack --stateless-rpc {repo-dir}
                 using (var process = new Process())
@@ -128,30 +131,63 @@ namespace app
                     // TODO: Encoding fail
                     using (StreamReader reader = new StreamReader(requestBody))
                     {
-                        process.StandardInput.Write(reader.ReadToEnd());
+                        char[] buffer = new char[1024];
+                        int count = reader.Read(buffer, 0, 1024);
+
+                        while (count > 0)
+                        {
+                            process.StandardInput.Write(buffer, 0, count);
+                            count = reader.Read(buffer, 0, 1024);
+                        }
                     }
 
                     // TODO: Encoding fail
-                    processOutput = process.StandardOutput.ReadToEnd();
+                    //processOutput = process.StandardOutput.ReadToEnd();
+
+                    {
+                        char[] buffer = new char[1024];
+                        int count = process.StandardOutput.Read(buffer, 0, 1024);
+
+                        while (count > 0)
+                        {
+                            outputStream.Write(Encoding.UTF8.GetBytes(buffer, 0, count), 0, count);
+                            outputSize += count;
+                            count = process.StandardOutput.Read(buffer, 0, 1024);
+                        }
+                    }
 
                     process.WaitForExit();
                 }
 
-                if (string.IsNullOrEmpty(processOutput))
-                    return responseBody.FlushAsync();
+                //if (string.IsNullOrEmpty(processOutput))
+                //    return responseBody.FlushAsync();
 
-                byte[] output = Encoding.UTF8.GetBytes(processOutput);
+                //byte[] output = Encoding.UTF8.GetBytes(processOutput);
 
                 responseHeaders["Expires"] = new string[] { "Fri, 01 Jan 1980 00:00:00 GMT" };
                 responseHeaders["Pragma"] = new string[] { "no-cache" };
                 responseHeaders["Cache-Control"] = new string[] { "no-cache, max-age=0, must-revalidate" };
-                responseHeaders["Content-Length"] = new string[] { (output.Length).ToString() };
+                responseHeaders["Content-Length"] = new string[] { (outputSize).ToString() };
                 responseHeaders["Content-Type"] = new string[] { "application/x-git-upload-pack-result" };
 
                 environment["owin.ResponseStatusCode"] = 200;
                 environment["owin.ResponseReasonPhrase"] = "OK";
 
-                return responseBody.WriteAsync(output, 0, output.Length);
+                // Write response
+                {
+                    outputStream.Position = 0;
+
+                    byte[] buffer = new byte[1024];
+                    int count = outputStream.Read(buffer, 0, 1024);
+
+                    while (count > 0)
+                    {
+                        responseBody.Write(buffer, 0, count);
+                        count = outputStream.Read(buffer, 0, 1024);
+                    }
+                }
+
+                return responseBody.FlushAsync();
             }
 
             // > GET /repository.git/HEAD HTTP/1.1
